@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "only_local": true,
+  "allow_cloud_calculation_triggers": false,
+  "mode": "balanced",
+  "max_context_chars": 3000,
+  "decision_history": 30,
+  "domains": {
+    "basic_arithmetic": true,
+    "percentages": true,
+    "unit_conversion": true,
+    "ev_route": true,
+    "fuel_route": true,
+    "finance_basic": true,
+    "time_distance": true
+  }
+}
+

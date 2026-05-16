@@ -1,0 +1,11 @@
+name: calculation-guard
+version: 0.1.0-planning
+description: "Hermes Agent plugin concept for deterministic calculation, unit, and numerical plausibility context before local/small models answer."
+author: Stefan Maier / Iris
+provides_hooks:
+  - pre_llm_call
+tools:
+  - calculation_guard_status
+  - calculation_guard_diagnostics
+  - calculation_guard_config
+
