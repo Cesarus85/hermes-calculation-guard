@@ -154,11 +154,12 @@ All supported calculations should run locally inside the Hermes plugin process.
 
 ## Current Beta Features
 
-Version `0.1.0-beta.4` includes:
+Version `0.1.0-beta.5` includes:
 
 - `pre_llm_call` context injection for supported local/small-model prompts
 - default cloud-model auto-skip with manual `/calculate` and `#calculate` override
 - manual `/no-calculate` and `#no-calculate` opt-out
+- automatic skip for message-forwarding prompts where a calculation is only payload for another person or agent
 - safe arithmetic parser based on restricted Python AST nodes, not raw `eval`
 - percentage, VAT add/remove, discount, percentage increase/decrease, and common unit conversions
 - percentage difference, amount-list totals, and monthly/yearly cost conversion

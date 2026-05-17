@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.1.0-beta.5
+
+- Added a message-forwarding guardrail so embedded calculations in Intercom/Jarvis/Sibylle/Ares delivery prompts are not answered by Calculation Guard.
+- Kept `/calculate` as an explicit override even for forwarding-like prompts.
+
 ## 0.1.0-beta.4
 
 - Tightened EV stop-count wording so models should not turn "charging required" into a concrete stop count without enough inputs.

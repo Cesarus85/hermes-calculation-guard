@@ -114,7 +114,15 @@ Goal: make every calculation decision inspectable.
 - [x] Add prompt-preview redaction for diagnostics.
 - [x] Add skipped categories and explanations.
 
-## v0.9 - Beta 3 Practical Coverage
+## v0.9 - Message Forwarding Safety
+
+Goal: avoid intercepting calculations that are merely payload for another person or agent.
+
+- [x] Skip Intercom/Jarvis/Sibylle/Ares message-forwarding prompts even when they contain arithmetic.
+- [x] Record `message-forwarding` as the skip reason.
+- [x] Keep `/calculate` as an explicit override.
+
+## v0.10 - Beta 3 Practical Coverage
 
 Goal: make the first beta materially more useful outside EV prompts.
 
@@ -126,7 +134,7 @@ Goal: make the first beta materially more useful outside EV prompts.
 - [x] Add `m/s` to `km/h` conversion.
 - [x] Add tests for each new practical calculation class.
 
-## v0.10 - Research Guard Cooperation
+## v0.11 - Research Guard Cooperation
 
 Goal: allow both plugins to complement each other without tight coupling.
 
@@ -136,7 +144,7 @@ Goal: allow both plugins to complement each other without tight coupling.
 - [ ] ADAPT Define ordering expectations when both plugins are installed.
 - [ ] Document recommended plugin order.
 
-## v0.11 - Answer Consistency Linting
+## v0.12 - Answer Consistency Linting
 
 Goal: optionally catch contradictions after deterministic values are available.
 

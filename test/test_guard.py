@@ -24,6 +24,16 @@ class CalculationGuardTests(unittest.TestCase):
         self.assertEqual(guard._should_calculate("/status"), (False, "slash-command"))
         self.assertEqual(guard._should_calculate("/help"), (False, "slash-command"))
 
+    def test_message_forwarding_prompts_do_not_trigger_calculation(self):
+        prompt = "schicke eine Nachricht an Sibylle über Jarvis, sie soll mir folgende Rechnung beantworten: 1+1= ?"
+        self.assertEqual(guard._should_calculate(prompt), (False, "message-forwarding"))
+        self.assertIsNone(guard.pre_llm_calculation_guard("s1", prompt, "qwen3", "ollama"))
+        self.assertEqual(guard.DECISIONS[-1]["reason"], "message-forwarding")
+
+    def test_manual_calculate_still_overrides_message_forwarding_heuristic(self):
+        prompt = "/calculate schicke eine Nachricht an Sibylle über Jarvis mit 1+1= ?"
+        self.assertEqual(guard._should_calculate(prompt), (True, "explicit"))
+
     def test_model_gate_recognizes_local_and_cloud_models(self):
         self.assertTrue(guard._is_local_or_small_model("qwen3:latest", "ollama"))
         self.assertTrue(guard._is_local_or_small_model("llama-3", "vllm"))

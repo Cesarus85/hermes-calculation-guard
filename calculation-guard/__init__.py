@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 
-__version__ = "0.1.0-beta.4"
+__version__ = "0.1.0-beta.5"
 CONFIG_PATH = Path.home() / ".hermes" / "calculation-guard.json"
 PLUGIN_CONFIG_PATH = Path(__file__).resolve().with_name("config.json")
 MAX_DECISIONS = 30
@@ -62,6 +62,14 @@ CALC_WORD_RE = re.compile(
     r"discount|umrechnen|konvertiere|convert|reichweite|verbrauch|akku|batterie|"
     r"kwh|l/100\s*km|liter|tank|geschwindigkeit|tempo|durchschnittsgeschwindigkeit|"
     r"kosten|monat|jahr|jährlich|jaehrlich|km/h|m/s)\b",
+    re.IGNORECASE,
+)
+MESSAGE_FORWARDING_RE = re.compile(
+    r"\b(?:schick(?:e|en)?|sende|send|übermittle|uebermittle|leite\s+weiter|forward|"
+    r"richt(?:e|en)?|frage|frag|stell(?:e)?)\b[\s\S]{0,220}"
+    r"\b(?:nachricht|message|jarvis|sibylle|ares|interkom|intercom|agent(?:en)?|über|ueber|via)\b"
+    r"|"
+    r"\b(?:über|ueber|via)\s+(?:jarvis|ares|interkom|intercom|agent(?:en)?)\b",
     re.IGNORECASE,
 )
 NUMBER_RE = r"[-+]?\d+(?:[.,]\d+)?"
@@ -871,6 +879,8 @@ def _should_calculate(message: str) -> tuple[bool, str]:
         return False, "status-request"
     if SLASH_COMMAND_RE.match(text):
         return False, "slash-command"
+    if _is_message_forwarding_prompt(text):
+        return False, "message-forwarding"
     config = _config_snapshot()
     if not config["enabled"]:
         return False, "disabled"
@@ -886,6 +896,12 @@ def _should_calculate(message: str) -> tuple[bool, str]:
 
 def _is_status_request(message: str) -> bool:
     return bool(STATUS_REQUEST_RE.search(message))
+
+
+def _is_message_forwarding_prompt(message: str) -> bool:
+    if not MESSAGE_FORWARDING_RE.search(message):
+        return False
+    return bool(re.search(r"\b(?:jarvis|sibylle|ares|interkom|intercom|agent(?:en)?|nachricht|message)\b", message, re.IGNORECASE))
 
 
 def _redact_prompt_preview(text: str, limit: int = 180) -> str:
