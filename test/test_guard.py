@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import unittest
 from pathlib import Path
 
@@ -57,6 +56,20 @@ class CalculationGuardTests(unittest.TestCase):
         self.assertEqual(vat["computed"]["tax_amount"], 24.51)
         self.assertEqual(vat["computed"]["gross_value"], 153.51)
 
+    def test_percentage_increase_and_decrease(self):
+        increase = guard._calculate_percentages("349 plus 19%")
+        self.assertEqual(increase["computed"]["change_amount"], 66.31)
+        self.assertEqual(increase["computed"]["increased_value"], 415.31)
+
+        decrease = guard._calculate_percentages("899 minus 15%")
+        self.assertEqual(decrease["computed"]["change_amount"], 134.85)
+        self.assertEqual(decrease["computed"]["decreased_value"], 764.15)
+
+    def test_vat_remove_calculation(self):
+        vat = guard._calculate_percentages("153,51 Euro inklusive 19% MwSt netto herausrechnen")
+        self.assertEqual(vat["computed"]["net_value"], 129)
+        self.assertEqual(vat["computed"]["tax_amount"], 24.51)
+
     def test_unit_conversion(self):
         conversion = guard._calculate_unit_conversion("Konvertiere 1,5 km in m")
         self.assertEqual(conversion["computed"]["converted_value"], 1500)
@@ -78,12 +91,22 @@ class CalculationGuardTests(unittest.TestCase):
         self.assertEqual(result["computed"]["full_tank_range_km"], [833.33, 833.33])
         self.assertEqual(result["computed"]["route_fuel_need_liters"], [36, 36])
 
+    def test_fuel_route_start_tank_and_reserve(self):
+        result = guard._calculate_fuel_route("600 km Strecke, 50 Liter Tank, Start Tank 80%, Reserve 10%, Verbrauch 6 l/100 km")
+        self.assertEqual(result["inputs"]["start_tank_percent"], 80)
+        self.assertEqual(result["inputs"]["reserve_percent"], 10)
+        self.assertEqual(result["computed"]["usable_start_fuel_liters"], 35)
+        self.assertEqual(result["computed"]["minimum_refuel_need_liters"], [1, 1])
+
     def test_time_distance_math(self):
         duration = guard._calculate_time_distance("Wie lange brauche ich für 588 km bei 110 km/h?")
         self.assertEqual(duration["computed"]["duration_minutes"], 320.73)
 
         speed = guard._calculate_time_distance("Welche Durchschnittsgeschwindigkeit sind 410 km in 4h 30min?")
         self.assertEqual(speed["computed"]["average_speed_kmh"], 91.11)
+
+        distance = guard._calculate_time_distance("Wie weit komme ich in 2h bei 110 km/h?")
+        self.assertEqual(distance["computed"]["distance_km"], 220)
 
     def test_pre_hook_injects_for_local_model_and_skips_cloud_auto(self):
         guard.DECISIONS.clear()

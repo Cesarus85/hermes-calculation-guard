@@ -53,9 +53,9 @@ Goal: deterministic arithmetic without unsafe code execution.
 Goal: cover common everyday calculation failures.
 
 - [x] Percent of value.
-- [ ] Percentage increase/decrease.
+- [x] Percentage increase/decrease.
 - [x] Discount.
-- [x] VAT/sales-tax style add.
+- [x] VAT/sales-tax style add/remove.
 - [x] Unit conversion for distance, mass, volume, time, power, and energy.
 - [x] Explicit ambiguity warnings for uncertain units.
 
@@ -81,10 +81,10 @@ Goal: support combustion vehicles and hybrid/fuel prompts.
 
 - [x] Parse consumption in l/100 km.
 - [x] Parse tank size in liters.
-- [ ] Parse start tank percent.
+- [x] Parse start tank percent.
 - [x] Compute full-tank range.
 - [x] Compute route fuel need.
-- [ ] Compute rough missing fuel.
+- [x] Compute rough missing fuel.
 - [x] Add guardrails: no live fuel price, no guaranteed station availability.
 
 ## v0.7 - Time, Distance, Speed
@@ -93,7 +93,7 @@ Goal: cover travel and planning math independent of Google APIs.
 
 - [x] Compute time from distance and speed.
 - [x] Compute speed from distance and time.
-- [ ] Compute distance from speed and time.
+- [x] Compute distance from speed and time.
 - [x] Support hours/minutes parsing.
 - [x] Warn when this is not a route planner and ignores traffic.
 
@@ -135,11 +135,11 @@ Goal: prepare a first useful public beta.
 - [ ] README complete.
 - [ ] PROJECT spec complete.
 - [ ] Configuration documented.
-- [ ] Manual install instructions documented.
+- [x] Manual install instructions documented.
 - [ ] Status diagnostics documented.
 - [ ] At least 30 dependency-free tests.
 - [ ] Known limitations documented.
-- [ ] Release notes added.
+- [x] Release notes added.
 
 ## Explicit Non-Goals
 

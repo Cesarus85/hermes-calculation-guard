@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 
-__version__ = "0.1.0-beta.1"
+__version__ = "0.1.0-beta.2"
 CONFIG_PATH = Path.home() / ".hermes" / "calculation-guard.json"
 PLUGIN_CONFIG_PATH = Path(__file__).resolve().with_name("config.json")
 MAX_DECISIONS = 30
@@ -397,6 +397,40 @@ def _calculate_percentages(text: str) -> dict[str, Any] | None:
             "warnings": [],
         }
 
+    increase = re.search(
+        rf"({NUMBER_RE})\s*(?:eur|euro|€)?\s*(?:plus|\+|erhöhen\s+um|erhoehen\s+um|increase\s+by)\s*({NUMBER_RE})\s*%",
+        lower,
+    )
+    if increase:
+        value = _normalize_number(increase.group(1))
+        percent = _normalize_number(increase.group(2))
+        amount = value * percent / 100
+        return {
+            "domain": "percentages",
+            "confidence": "high",
+            "inputs": {"value": value, "increase_percent": percent},
+            "computed": {"change_amount": _round_value(amount), "increased_value": _round_value(value + amount)},
+            "formula": "increased_value = value * (1 + percent / 100)",
+            "warnings": [],
+        }
+
+    decrease = re.search(
+        rf"({NUMBER_RE})\s*(?:eur|euro|€)?\s*(?:minus|-|senken\s+um|reduzieren\s+um|decrease\s+by|reduce\s+by)\s*({NUMBER_RE})\s*%",
+        lower,
+    )
+    if decrease:
+        value = _normalize_number(decrease.group(1))
+        percent = _normalize_number(decrease.group(2))
+        amount = value * percent / 100
+        return {
+            "domain": "percentages",
+            "confidence": "high",
+            "inputs": {"value": value, "decrease_percent": percent},
+            "computed": {"change_amount": _round_value(amount), "decreased_value": _round_value(value - amount)},
+            "formula": "decreased_value = value * (1 - percent / 100)",
+            "warnings": [],
+        }
+
     vat = re.search(rf"({NUMBER_RE})\s*(?:eur|euro|€)?[\s\S]{{0,30}}\b(?:mit|plus)\s*({NUMBER_RE})\s*%\s*(?:mwst|ust|umsatzsteuer|vat|tax)", lower)
     if vat:
         net = _normalize_number(vat.group(1))
@@ -408,6 +442,24 @@ def _calculate_percentages(text: str) -> dict[str, Any] | None:
             "inputs": {"net_value": net, "tax_percent": percent},
             "computed": {"tax_amount": _round_value(gross - net), "gross_value": _round_value(gross)},
             "formula": "gross = net * (1 + tax_percent / 100)",
+            "warnings": ["Arithmetic support only; no tax/legal interpretation."],
+        }
+
+    vat_remove = re.search(
+        rf"({NUMBER_RE})\s*(?:eur|euro|€)?[\s\S]{{0,50}}(?:inkl\.?|inklusive|including|brutto|mit)\s*({NUMBER_RE})\s*%\s*(?:mwst|ust|umsatzsteuer|vat|tax)[\s\S]{{0,40}}(?:netto|ohne|remove|entfernen|herausrechnen)"
+        rf"|({NUMBER_RE})\s*(?:eur|euro|€)?[\s\S]{{0,40}}(?:netto|ohne|remove|entfernen|herausrechnen)[\s\S]{{0,40}}({NUMBER_RE})\s*%\s*(?:mwst|ust|umsatzsteuer|vat|tax)",
+        lower,
+    )
+    if vat_remove:
+        gross = _normalize_number(vat_remove.group(1) or vat_remove.group(3))
+        percent = _normalize_number(vat_remove.group(2) or vat_remove.group(4))
+        net = gross / (1 + percent / 100)
+        return {
+            "domain": "finance_basic",
+            "confidence": "high",
+            "inputs": {"gross_value": gross, "tax_percent": percent},
+            "computed": {"net_value": _round_value(net), "tax_amount": _round_value(gross - net)},
+            "formula": "net = gross / (1 + tax_percent / 100)",
             "warnings": ["Arithmetic support only; no tax/legal interpretation."],
         }
 
@@ -579,6 +631,17 @@ def _calculate_fuel_route(text: str) -> dict[str, Any] | None:
         fuel_need = [distance_km * low_consumption / 100, distance_km * high_consumption / 100]
         inputs["distance_km"] = _round_value(distance_km)
         computed["route_fuel_need_liters"] = [_round_value(fuel_need[0]), _round_value(fuel_need[1])]
+        start_tank_percent = _extract_soc_percent(lower, ("start", "anfang", "abfahrt", "los", "tankstand", "tank"))
+        reserve_percent = _extract_soc_percent(lower, ("reserve", "ziel", "ankunft", "rest", "puffer"))
+        if start_tank_percent is not None:
+            if reserve_percent is None:
+                reserve_percent = 0.0
+            usable_start_fuel = max(0.0, tank_l * (start_tank_percent - reserve_percent) / 100)
+            missing = [max(0.0, fuel_need[0] - usable_start_fuel), max(0.0, fuel_need[1] - usable_start_fuel)]
+            inputs["start_tank_percent"] = _round_value(start_tank_percent)
+            inputs["reserve_percent"] = _round_value(reserve_percent)
+            computed["usable_start_fuel_liters"] = _round_value(usable_start_fuel)
+            computed["minimum_refuel_need_liters"] = [_round_value(missing[0]), _round_value(missing[1])]
     return {
         "domain": "fuel_route",
         "confidence": "high",
@@ -625,6 +688,16 @@ def _calculate_time_distance(text: str) -> dict[str, Any] | None:
             "computed": {"average_speed_kmh": _round_value(speed_result)},
             "formula": "speed_kmh = distance_km / time_h",
             "warnings": ["Arithmetic support only; route and traffic were not calculated."],
+        }
+    if speed and duration_h and re.search(r"\b(wie weit|strecke|distanz|entfernung|distance|far)\b", lower):
+        distance_result = speed * duration_h
+        return {
+            "domain": "time_distance",
+            "confidence": "high",
+            "inputs": {"speed_kmh": _round_value(speed), "duration_hours": _round_value(duration_h)},
+            "computed": {"distance_km": _round_value(distance_result)},
+            "formula": "distance_km = speed_kmh * time_h",
+            "warnings": ["Arithmetic support only; route, traffic, stops, and speed limits were not calculated."],
         }
     return None
 

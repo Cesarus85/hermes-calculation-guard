@@ -154,16 +154,16 @@ All supported calculations should run locally inside the Hermes plugin process.
 
 ## Current Beta Features
 
-Version `0.1.0-beta.1` includes:
+Version `0.1.0-beta.2` includes:
 
 - `pre_llm_call` context injection for supported local/small-model prompts
 - default cloud-model auto-skip with manual `/calculate` and `#calculate` override
 - manual `/no-calculate` and `#no-calculate` opt-out
 - safe arithmetic parser based on restricted Python AST nodes, not raw `eval`
-- percentage, VAT, discount, and common unit conversions
+- percentage, VAT add/remove, discount, percentage increase/decrease, and common unit conversions
 - EV range and route energy plausibility math
 - fuel range and route fuel plausibility math
-- time/distance/speed calculations
+- time/distance/speed calculations, including distance from speed and duration
 - `calculation_guard_status`, `calculation_guard_diagnostics`, and `calculation_guard_config`
 - in-memory decision diagnostics with prompt-preview redaction
 
@@ -180,17 +180,63 @@ calculation-guard/
   config.example.json
 ```
 
-Installation paths:
+### Install From GitHub
 
-1. Hermes-initiated installation from GitHub.
-2. Manual command-line installation into the Hermes plugin directory.
+Use this after the version you want to test has been pushed:
 
-## Development
+```text
+Repository: https://github.com/Cesarus85/hermes-calculation-guard
+Plugin directory inside repository: calculation-guard/
+```
 
-Run the dependency-free tests from the repository root:
+Tell Hermes:
+
+```text
+Install the Hermes plugin from https://github.com/Cesarus85/hermes-calculation-guard.
+Use the plugin directory calculation-guard/.
+Load plugin.yaml, register the pre_llm_call hook from __init__.py, and enable calculation_guard_status, calculation_guard_diagnostics, and calculation_guard_config.
+```
+
+### Install From Local Checkout
+
+For local testing before a release:
+
+```text
+/Users/irisclawbot/Documents/Hermes Plugins/hermes-calculation-guard/calculation-guard
+```
+
+Tell Hermes:
+
+```text
+Install or link this local Hermes plugin directory:
+/Users/irisclawbot/Documents/Hermes Plugins/hermes-calculation-guard/calculation-guard
+
+After loading it, test:
+1. Rechne 77 / 18 * 100
+2. 588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km
+3. 153,51 Euro inklusive 19% MwSt netto herausrechnen
+4. calculation_guard_status
+```
+
+Expected behavior:
+
+- local/small models get automatic calculation context for supported prompts
+- cloud models skip automatic injection by default
+- `/calculate ...` forces calculation even when the model gate would skip
+- `/no-calculate ...` skips calculation for the current turn
+
+## Local Verification
+
+Run the dependency-free unit tests from the repository root:
 
 ```bash
 python3 -m unittest discover -s test
+```
+
+Run the smoke test to exercise the hook directly without a full Hermes runtime:
+
+```bash
+python3 scripts/smoke_test.py
 ```
 
 ## Development Status
