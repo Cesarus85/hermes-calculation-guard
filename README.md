@@ -1,6 +1,6 @@
 # Hermes Calculation Guard
 
-Hermes Calculation Guard is a planned Hermes Agent plugin for improving the numerical reliability of local and small language models.
+Hermes Calculation Guard is a Hermes Agent plugin for improving the numerical reliability of local and small language models.
 
 It is intended to complement [Hermes Research Guard](https://github.com/Cesarus85/hermes-research-guard):
 
@@ -126,7 +126,7 @@ Default behavior:
 - allow manual force
 - allow optional cloud-model triggering through config
 
-Suggested config:
+Config example:
 
 ```json
 {
@@ -152,16 +152,47 @@ Calculation Guard does not need external web access for its core job. It should 
 
 All supported calculations should run locally inside the Hermes plugin process.
 
-## Installation Goal
+## Current Beta Features
 
-This repository is intended to become a Hermes Agent plugin. Like Hermes Research Guard, it should not be a standalone application.
+Version `0.1.0-beta.1` includes:
 
-Planned installation paths:
+- `pre_llm_call` context injection for supported local/small-model prompts
+- default cloud-model auto-skip with manual `/calculate` and `#calculate` override
+- manual `/no-calculate` and `#no-calculate` opt-out
+- safe arithmetic parser based on restricted Python AST nodes, not raw `eval`
+- percentage, VAT, discount, and common unit conversions
+- EV range and route energy plausibility math
+- fuel range and route fuel plausibility math
+- time/distance/speed calculations
+- `calculation_guard_status`, `calculation_guard_diagnostics`, and `calculation_guard_config`
+- in-memory decision diagnostics with prompt-preview redaction
+
+## Installation
+
+This repository is intended to be installed like Hermes Research Guard. It is not a standalone application.
+
+Expected plugin directory:
+
+```text
+calculation-guard/
+  plugin.yaml
+  __init__.py
+  config.example.json
+```
+
+Installation paths:
 
 1. Hermes-initiated installation from GitHub.
 2. Manual command-line installation into the Hermes plugin directory.
 
+## Development
+
+Run the dependency-free tests from the repository root:
+
+```bash
+python3 -m unittest discover -s test
+```
+
 ## Development Status
 
-Planning scaffold only. See [PROJECT.md](PROJECT.md) and [ROADMAP.md](ROADMAP.md).
-
+First beta implementation. See [PROJECT.md](PROJECT.md) and [ROADMAP.md](ROADMAP.md) for the remaining roadmap.

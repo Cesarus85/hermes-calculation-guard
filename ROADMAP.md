@@ -16,97 +16,97 @@ Stand: 2026-05-16
 
 Goal: create a minimal Hermes plugin that can inject calculation context before local model answers.
 
-- [ ] Create `calculation-guard/plugin.yaml`.
-- [ ] Create `calculation-guard/__init__.py`.
-- [ ] Implement `pre_llm_call` hook.
-- [ ] Return Hermes-compatible context injection.
-- [ ] Add plugin version constant.
-- [ ] Add README installation instructions.
-- [ ] Add MIT license.
-- [ ] Add dependency-free unit test structure.
+- [x] Create `calculation-guard/plugin.yaml`.
+- [x] Create `calculation-guard/__init__.py`.
+- [x] Implement `pre_llm_call` hook.
+- [x] Return Hermes-compatible context injection.
+- [x] Add plugin version constant.
+- [x] Add README installation instructions.
+- [x] Add MIT license.
+- [x] Add dependency-free unit test structure.
 
 ## v0.2 - Model Gate And Manual Controls
 
 Goal: match the Research Guard philosophy: primarily help local models, optionally cloud models.
 
-- [ ] Add local model/provider detection.
-- [ ] Add cloud model/provider detection.
-- [ ] Default to `only_local=true`.
-- [ ] Add `CALC_GUARD_ALLOW_CLOUD_TRIGGERS=false`.
-- [ ] Add `/calculate` and `#calculate` manual force.
-- [ ] Add `/no-calculate` and `#no-calculate` manual skip.
-- [ ] Add decision reasons for local, cloud, forced, skipped, disabled.
+- [x] Add local model/provider detection.
+- [x] Add cloud model/provider detection.
+- [x] Default to `only_local=true`.
+- [x] Add `CALC_GUARD_ALLOW_CLOUD_TRIGGERS=false`.
+- [x] Add `/calculate` and `#calculate` manual force.
+- [x] Add `/no-calculate` and `#no-calculate` manual skip.
+- [x] Add decision reasons for local, cloud, forced, skipped, disabled.
 
 ## v0.3 - Safe Arithmetic Core
 
 Goal: deterministic arithmetic without unsafe code execution.
 
-- [ ] Add safe expression parser.
-- [ ] Support `+`, `-`, `*`, `/`, parentheses, powers if safe.
-- [ ] Support decimal comma and decimal point.
-- [ ] Reject unsafe syntax.
-- [ ] Add rounding policy.
-- [ ] Add tests proving raw `eval` is not used.
+- [x] Add safe expression parser.
+- [x] Support `+`, `-`, `*`, `/`, parentheses, powers if safe.
+- [x] Support decimal comma and decimal point.
+- [x] Reject unsafe syntax.
+- [x] Add rounding policy.
+- [x] Add tests proving raw `eval` is not used.
 
 ## v0.4 - Percentages And Unit Conversion
 
 Goal: cover common everyday calculation failures.
 
-- [ ] Percent of value.
+- [x] Percent of value.
 - [ ] Percentage increase/decrease.
-- [ ] Discount.
-- [ ] VAT/sales-tax style add/remove.
-- [ ] Unit conversion for distance, mass, volume, time, power, and energy.
-- [ ] Explicit ambiguity warnings for uncertain units.
+- [x] Discount.
+- [x] VAT/sales-tax style add.
+- [x] Unit conversion for distance, mass, volume, time, power, and energy.
+- [x] Explicit ambiguity warnings for uncertain units.
 
 ## v0.5 - EV Route Plausibility
 
 Goal: prevent obvious EV range and energy errors in local-model route answers.
 
-- [ ] Parse distance in km.
-- [ ] Parse battery capacity in kWh.
-- [ ] Detect likely `kW battery` typo and warn.
-- [ ] Parse consumption in kWh/100 km.
-- [ ] Parse consumption ranges.
-- [ ] Parse start SoC and reserve/target SoC when supplied.
-- [ ] Compute full-battery range.
-- [ ] Compute route energy need.
-- [ ] Compute rough missing energy.
-- [ ] Add guardrails: no exact charge time, no live availability, no optimized stop order.
-- [ ] Add tests for the known 77 kWh / 16-22 kWh/100 km / 588 km scenario.
+- [x] Parse distance in km.
+- [x] Parse battery capacity in kWh.
+- [x] Detect likely `kW battery` typo and warn.
+- [x] Parse consumption in kWh/100 km.
+- [x] Parse consumption ranges.
+- [x] Parse start SoC and reserve/target SoC when supplied.
+- [x] Compute full-battery range.
+- [x] Compute route energy need.
+- [x] Compute rough missing energy.
+- [x] Add guardrails: no exact charge time, no live availability, no optimized stop order.
+- [x] Add tests for the known 77 kWh / 16-22 kWh/100 km / 588 km scenario.
 
 ## v0.6 - Fuel Route Plausibility
 
 Goal: support combustion vehicles and hybrid/fuel prompts.
 
-- [ ] Parse consumption in l/100 km.
-- [ ] Parse tank size in liters.
+- [x] Parse consumption in l/100 km.
+- [x] Parse tank size in liters.
 - [ ] Parse start tank percent.
-- [ ] Compute full-tank range.
-- [ ] Compute route fuel need.
+- [x] Compute full-tank range.
+- [x] Compute route fuel need.
 - [ ] Compute rough missing fuel.
-- [ ] Add guardrails: no live fuel price, no guaranteed station availability.
+- [x] Add guardrails: no live fuel price, no guaranteed station availability.
 
 ## v0.7 - Time, Distance, Speed
 
 Goal: cover travel and planning math independent of Google APIs.
 
-- [ ] Compute time from distance and speed.
-- [ ] Compute speed from distance and time.
+- [x] Compute time from distance and speed.
+- [x] Compute speed from distance and time.
 - [ ] Compute distance from speed and time.
-- [ ] Support hours/minutes parsing.
-- [ ] Warn when this is not a route planner and ignores traffic.
+- [x] Support hours/minutes parsing.
+- [x] Warn when this is not a route planner and ignores traffic.
 
 ## v0.8 - Diagnostics And Status
 
 Goal: make every calculation decision inspectable.
 
-- [ ] Add in-memory decision ring buffer.
-- [ ] Add `calculation_guard_status`.
-- [ ] Add `calculation_guard_diagnostics`.
-- [ ] Record detected domain, parsed inputs, computed outputs, warnings, model gate, and visible effect.
-- [ ] Add prompt-preview redaction for diagnostics.
-- [ ] Add skipped categories and explanations.
+- [x] Add in-memory decision ring buffer.
+- [x] Add `calculation_guard_status`.
+- [x] Add `calculation_guard_diagnostics`.
+- [x] Record detected domain, parsed inputs, computed outputs, warnings, model gate, and visible effect.
+- [x] Add prompt-preview redaction for diagnostics.
+- [x] Add skipped categories and explanations.
 
 ## v0.9 - Research Guard Cooperation
 
@@ -149,4 +149,3 @@ Goal: prepare a first useful public beta.
 - [ ] LIMIT No guarantee that local models obey injected context.
 - [ ] LIMIT No exact EV charging optimizer without real segment, vehicle, charging-curve, and station data.
 - [ ] LIMIT No regulated financial, tax, medical, or legal advice.
-
