@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 
-__version__ = "0.1.0-beta.3"
+__version__ = "0.1.0-beta.4"
 CONFIG_PATH = Path.home() / ".hermes" / "calculation-guard.json"
 PLUGIN_CONFIG_PATH = Path(__file__).resolve().with_name("config.json")
 MAX_DECISIONS = 30
@@ -445,7 +445,7 @@ def _calculate_percentages(text: str) -> dict[str, Any] | None:
         }
 
     decrease = re.search(
-        rf"({NUMBER_RE})\s*(?:eur|euro|€)?\s*(?:minus|-|senken\s+um|reduzieren\s+um|decrease\s+by|reduce\s+by)\s*({NUMBER_RE})\s*%",
+        rf"({NUMBER_RE})\s*(?:eur|euro|€)?\s*(?:(?:minus|senken\s+um|reduzieren\s+um|decrease\s+by|reduce\s+by)\s*|\s+-\s+)({NUMBER_RE})\s*%",
         lower,
     )
     if decrease:
@@ -681,9 +681,14 @@ def _calculate_ev_route(text: str) -> dict[str, Any] | None:
         inputs["distance_km"] = _round_value(distance_km)
         computed["route_energy_need_kwh"] = [_round_value(route_energy[0], 0), _round_value(route_energy[1], 0)]
         computed["mid_route_charging_required"] = route_energy[1] > battery_kwh
+        computed["exact_stop_count_calculated"] = False
+        computed["allowed_without_charge_window"] = (
+            "Say that intermediate charging is required/likely from energy arithmetic. "
+            "Do not state a concrete stop count such as one stop, 1-2 stops, or at least N stops."
+        )
         warnings.append(
-            "Do not state an exact charge-stop count unless a charging window, start SoC, reserve/target SoC, and usable capacity basis are explicit. "
-            "Without those, say only what follows from energy arithmetic, for example that intermediate charging is required or likely."
+            "Do not state a concrete charge-stop count unless a charging window, start SoC, reserve/target SoC, and usable capacity basis are explicit. "
+            "Without those, do not write 'ein Ladestopp', 'mindestens 1 Ladestopp', '1-2 Stopps', or any other count; say only that intermediate charging is required/likely."
         )
         start_soc = _extract_soc_percent(lower, ("start", "anfang", "abfahrt", "los", "voll", "100%"))
         reserve_soc = _extract_soc_percent(lower, ("reserve", "ziel", "ankunft", "rest", "puffer"))
@@ -705,6 +710,11 @@ def _calculate_ev_route(text: str) -> dict[str, Any] | None:
                 _ceil_positive(missing_energy[0] / window_energy),
                 _ceil_positive(missing_energy[1] / window_energy),
             ]
+            computed["exact_stop_count_calculated"] = False
+            computed["charge_window_stop_count_rule"] = (
+                "minimum_mid_route_charges_lower_bound is only a mathematical lower bound for missing route energy divided by the explicit charge-window energy. "
+                "Do not recompute stop counts from full route distance or charge-window range; do not upgrade the lower bound into an exact route plan."
+            )
     return {
         "domain": "ev_route",
         "confidence": "high",
@@ -842,6 +852,8 @@ def _calculate_all(text: str, forced: bool = False) -> list[dict[str, Any]]:
         result = func(text)
         if result and (result.get("computed") or forced):
             results.append(result)
+    if any(item.get("domain") == "ev_route" for item in results):
+        results = [item for item in results if item.get("domain") != "percentages"]
     if any(item.get("domain") == "finance_basic" for item in results):
         results = [item for item in results if item.get("domain") != "basic_arithmetic"]
     return results
@@ -954,6 +966,8 @@ def _format_context(results: list[dict[str, Any]], reason: str, model: str | Non
         "Für diese aktuelle Nutzerfrage wurden lokal deterministische Rechenwerte berechnet.",
         "Nutze diese Werte für Arithmetik, Einheiten und Plausibilität, statt die Kernrechnung neu zu erraten.",
         "Unterscheide Rechenergebnis, Eingabe und Annahme. Behaupte keine Live-Daten, Optimierung oder regulierte Beratung.",
+        "Wenn Calculation Guard eine EV-Stopzahl nicht ausdrücklich als exakte Stopzahl berechnet, nenne keine konkrete Lade-/Stoppanzahl.",
+        "Wenn nur eine mathematische Untergrenze für Zwischenladungen vorhanden ist, nenne sie ausdrücklich als Untergrenze, nicht als fertige Routen- oder Ladeplanung.",
         "Calculation-Guard-Kontexte aus früheren Turns sind für die aktuelle Antwort ungültig.",
         "[/Calculation Guard aktiv]",
         "",

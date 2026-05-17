@@ -65,6 +65,8 @@ class CalculationGuardTests(unittest.TestCase):
         self.assertEqual(decrease["computed"]["change_amount"], 134.85)
         self.assertEqual(decrease["computed"]["decreased_value"], 764.15)
 
+        self.assertIsNone(guard._calculate_percentages("Ladefenster 20-80%"))
+
     def test_percentage_difference(self):
         result = guard._calculate_percentages("Von 80 auf 100, wie viel Prozent mehr?")
         self.assertEqual(result["computed"]["absolute_change"], 20)
@@ -107,13 +109,31 @@ class CalculationGuardTests(unittest.TestCase):
         self.assertEqual(result["computed"]["route_energy_need_kwh"], [94, 129])
         self.assertNotIn("minimum_mid_route_charges_lower_bound", result["computed"])
         self.assertTrue(result["computed"]["mid_route_charging_required"])
-        self.assertIn("exact charge-stop count", " ".join(result["warnings"]))
+        self.assertFalse(result["computed"]["exact_stop_count_calculated"])
+        self.assertIn("ein Ladestopp", " ".join(result["warnings"]))
+        self.assertIn("concrete charge-stop count", " ".join(result["warnings"]))
 
     def test_ev_charge_window_enables_stop_lower_bound(self):
         result = guard._calculate_ev_route("588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km, Ladefenster 20-80%")
         self.assertEqual(result["inputs"]["charge_window_percent"], [20, 80])
         self.assertEqual(result["computed"]["charge_window_energy_kwh"], 46.2)
         self.assertEqual(result["computed"]["minimum_mid_route_charges_lower_bound"], [1, 2])
+        self.assertFalse(result["computed"]["exact_stop_count_calculated"])
+        self.assertIn("lower bound", result["computed"]["charge_window_stop_count_rule"])
+        self.assertEqual(
+            [item["domain"] for item in guard._calculate_all("588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km, Ladefenster 20-80%")],
+            ["ev_route"],
+        )
+
+    def test_ev_context_contains_strict_stop_count_rules(self):
+        context = guard._format_context(
+            [guard._calculate_ev_route("588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km, Ladefenster 20-80%")],
+            "supported-calculation",
+            "qwen",
+            "588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km, Ladefenster 20-80%",
+        )
+        self.assertIn("nenne keine konkrete Lade-/Stoppanzahl", context)
+        self.assertIn("Untergrenze", context)
 
     def test_ev_battery_basis_warnings(self):
         gross = guard._calculate_ev_route("588 km Route, 77 kWh brutto Batterie, Verbrauch 18 kWh/100 km")

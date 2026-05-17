@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.1.0-beta.4
+
+- Tightened EV stop-count wording so models should not turn "charging required" into a concrete stop count without enough inputs.
+- Clarified that charge-window stop counts are mathematical lower bounds, not exact route plans.
+- Prevented EV charge windows such as `20-80%` from also triggering the generic percentage calculator.
+
 ## 0.1.0-beta.3
 
 - Added stricter EV stop-count guardrails: without an explicit charge window, the guard injects energy facts but no computed stop count.

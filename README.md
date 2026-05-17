@@ -154,7 +154,7 @@ All supported calculations should run locally inside the Hermes plugin process.
 
 ## Current Beta Features
 
-Version `0.1.0-beta.3` includes:
+Version `0.1.0-beta.4` includes:
 
 - `pre_llm_call` context injection for supported local/small-model prompts
 - default cloud-model auto-skip with manual `/calculate` and `#calculate` override
@@ -163,7 +163,7 @@ Version `0.1.0-beta.3` includes:
 - percentage, VAT add/remove, discount, percentage increase/decrease, and common unit conversions
 - percentage difference, amount-list totals, and monthly/yearly cost conversion
 - EV range and route energy plausibility math
-- EV charge-window math and stricter stop-count guardrails
+- EV charge-window math and stricter stop-count guardrails, including explicit "lower bound, not exact route plan" wording
 - EV gross/net/usable battery basis warnings
 - fuel range and route fuel plausibility math
 - time/distance/speed calculations, including distance from speed and duration plus `km/h` to `m/s`
@@ -232,7 +232,7 @@ Expected behavior:
 - cloud models skip automatic injection by default
 - `/calculate ...` forces calculation even when the model gate would skip
 - `/no-calculate ...` skips calculation for the current turn
-- EV prompts do not get a concrete computed stop count unless a charging window is supplied
+- EV prompts do not get a concrete stop count unless enough inputs are supplied; charge-window counts are presented only as mathematical lower bounds
 
 ## Local Verification
 

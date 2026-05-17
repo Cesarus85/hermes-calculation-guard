@@ -76,6 +76,8 @@ Goal: prevent obvious EV range and energy errors in local-model route answers.
 - [x] Compute lower-bound mid-route charge counts only when a charging window is supplied.
 - [x] Detect gross/net/usable battery capacity wording.
 - [x] Warn against exact stop counts when charging window, usable capacity, start SoC, or reserve are missing.
+- [x] Explicitly prevent `20-80%` charge windows from triggering generic percentage calculations.
+- [x] Mark charge-window stop counts as mathematical lower bounds, not exact route plans.
 - [x] Add guardrails: no exact charge time, no live availability, no optimized stop order.
 - [x] Add tests for the known 77 kWh / 16-22 kWh/100 km / 588 km scenario.
 
