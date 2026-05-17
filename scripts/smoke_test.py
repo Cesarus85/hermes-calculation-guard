@@ -28,6 +28,7 @@ def main() -> int:
         ("Rechne 77 / 18 * 100", "basic_arithmetic"),
         ("588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km", "ev_route"),
         ("153,51 Euro inklusive 19% MwSt netto herausrechnen", "finance_basic"),
+        ("Addiere 12,99 + 4,50 + 18 Euro", "finance_basic"),
         ("Wie weit komme ich in 2h bei 110 km/h?", "time_distance"),
     ]
 

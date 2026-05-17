@@ -72,6 +72,10 @@ Goal: prevent obvious EV range and energy errors in local-model route answers.
 - [x] Compute full-battery range.
 - [x] Compute route energy need.
 - [x] Compute rough missing energy.
+- [x] Parse simple charging windows such as `20-80%`.
+- [x] Compute lower-bound mid-route charge counts only when a charging window is supplied.
+- [x] Detect gross/net/usable battery capacity wording.
+- [x] Warn against exact stop counts when charging window, usable capacity, start SoC, or reserve are missing.
 - [x] Add guardrails: no exact charge time, no live availability, no optimized stop order.
 - [x] Add tests for the known 77 kWh / 16-22 kWh/100 km / 588 km scenario.
 
@@ -108,7 +112,19 @@ Goal: make every calculation decision inspectable.
 - [x] Add prompt-preview redaction for diagnostics.
 - [x] Add skipped categories and explanations.
 
-## v0.9 - Research Guard Cooperation
+## v0.9 - Beta 3 Practical Coverage
+
+Goal: make the first beta materially more useful outside EV prompts.
+
+- [x] Add amount-list totals for currency prompts.
+- [x] Add monthly-to-yearly cost calculations.
+- [x] Add yearly-to-monthly cost calculations.
+- [x] Add percentage-difference calculations.
+- [x] Add `km/h` to `m/s` conversion.
+- [x] Add `m/s` to `km/h` conversion.
+- [x] Add tests for each new practical calculation class.
+
+## v0.10 - Research Guard Cooperation
 
 Goal: allow both plugins to complement each other without tight coupling.
 
@@ -118,7 +134,7 @@ Goal: allow both plugins to complement each other without tight coupling.
 - [ ] ADAPT Define ordering expectations when both plugins are installed.
 - [ ] Document recommended plugin order.
 
-## v0.10 - Answer Consistency Linting
+## v0.11 - Answer Consistency Linting
 
 Goal: optionally catch contradictions after deterministic values are available.
 

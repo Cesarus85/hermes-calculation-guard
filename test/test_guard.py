@@ -65,21 +65,63 @@ class CalculationGuardTests(unittest.TestCase):
         self.assertEqual(decrease["computed"]["change_amount"], 134.85)
         self.assertEqual(decrease["computed"]["decreased_value"], 764.15)
 
+    def test_percentage_difference(self):
+        result = guard._calculate_percentages("Von 80 auf 100, wie viel Prozent mehr?")
+        self.assertEqual(result["computed"]["absolute_change"], 20)
+        self.assertEqual(result["computed"]["percentage_change"], 25)
+
     def test_vat_remove_calculation(self):
         vat = guard._calculate_percentages("153,51 Euro inklusive 19% MwSt netto herausrechnen")
         self.assertEqual(vat["computed"]["net_value"], 129)
         self.assertEqual(vat["computed"]["tax_amount"], 24.51)
+
+    def test_finance_amount_list_and_period_costs(self):
+        total = guard._calculate_finance_basic("Addiere 12,99 + 4,50 + 18 Euro")
+        self.assertEqual(total["computed"]["total"], 35.49)
+        self.assertEqual(
+            [item["domain"] for item in guard._calculate_all("Addiere 12,99 + 4,50 + 18 Euro")],
+            ["finance_basic"],
+        )
+
+        yearly = guard._calculate_finance_basic("29,99 Euro pro Monat, was kostet das im Jahr?")
+        self.assertEqual(yearly["computed"]["yearly_value"], 359.88)
+
+        monthly = guard._calculate_finance_basic("360 Euro pro Jahr, was ist das pro Monat?")
+        self.assertEqual(monthly["computed"]["monthly_value"], 30)
 
     def test_unit_conversion(self):
         conversion = guard._calculate_unit_conversion("Konvertiere 1,5 km in m")
         self.assertEqual(conversion["computed"]["converted_value"], 1500)
         self.assertIsNone(guard._calculate_unit_conversion("Konvertiere 5 km in kg")["computed"].get("converted_value"))
 
+        speed = guard._calculate_unit_conversion("36 km/h in m/s")
+        self.assertEqual(speed["computed"]["converted_value"], 10)
+
+        reverse_speed = guard._calculate_unit_conversion("10 m/s in km/h")
+        self.assertEqual(reverse_speed["computed"]["converted_value"], 36)
+
     def test_ev_route_math_known_scenario(self):
         result = guard._calculate_ev_route("588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km")
         self.assertEqual(result["domain"], "ev_route")
         self.assertEqual(result["computed"]["full_battery_range_km"], [350, 481])
         self.assertEqual(result["computed"]["route_energy_need_kwh"], [94, 129])
+        self.assertNotIn("minimum_mid_route_charges_lower_bound", result["computed"])
+        self.assertTrue(result["computed"]["mid_route_charging_required"])
+        self.assertIn("exact charge-stop count", " ".join(result["warnings"]))
+
+    def test_ev_charge_window_enables_stop_lower_bound(self):
+        result = guard._calculate_ev_route("588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km, Ladefenster 20-80%")
+        self.assertEqual(result["inputs"]["charge_window_percent"], [20, 80])
+        self.assertEqual(result["computed"]["charge_window_energy_kwh"], 46.2)
+        self.assertEqual(result["computed"]["minimum_mid_route_charges_lower_bound"], [1, 2])
+
+    def test_ev_battery_basis_warnings(self):
+        gross = guard._calculate_ev_route("588 km Route, 77 kWh brutto Batterie, Verbrauch 18 kWh/100 km")
+        self.assertEqual(gross["inputs"]["battery_capacity_basis"], "gross")
+        self.assertIn("Gross", " ".join(gross["warnings"]))
+
+        usable = guard._calculate_ev_route("588 km Route, 77 kWh netto Batterie, Verbrauch 18 kWh/100 km")
+        self.assertEqual(usable["inputs"]["battery_capacity_basis"], "usable")
 
     def test_ev_kw_battery_warning(self):
         result = guard._calculate_ev_route("588 km mit 77 kW Batterie und 18 kWh/100 km Verbrauch")

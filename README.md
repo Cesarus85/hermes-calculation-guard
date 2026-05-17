@@ -154,16 +154,19 @@ All supported calculations should run locally inside the Hermes plugin process.
 
 ## Current Beta Features
 
-Version `0.1.0-beta.2` includes:
+Version `0.1.0-beta.3` includes:
 
 - `pre_llm_call` context injection for supported local/small-model prompts
 - default cloud-model auto-skip with manual `/calculate` and `#calculate` override
 - manual `/no-calculate` and `#no-calculate` opt-out
 - safe arithmetic parser based on restricted Python AST nodes, not raw `eval`
 - percentage, VAT add/remove, discount, percentage increase/decrease, and common unit conversions
+- percentage difference, amount-list totals, and monthly/yearly cost conversion
 - EV range and route energy plausibility math
+- EV charge-window math and stricter stop-count guardrails
+- EV gross/net/usable battery basis warnings
 - fuel range and route fuel plausibility math
-- time/distance/speed calculations, including distance from speed and duration
+- time/distance/speed calculations, including distance from speed and duration plus `km/h` to `m/s`
 - `calculation_guard_status`, `calculation_guard_diagnostics`, and `calculation_guard_config`
 - in-memory decision diagnostics with prompt-preview redaction
 
@@ -214,8 +217,13 @@ Install or link this local Hermes plugin directory:
 After loading it, test:
 1. Rechne 77 / 18 * 100
 2. 588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km
-3. 153,51 Euro inklusive 19% MwSt netto herausrechnen
-4. calculation_guard_status
+3. 588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km, Ladefenster 20-80%
+4. 153,51 Euro inklusive 19% MwSt netto herausrechnen
+5. Addiere 12,99 + 4,50 + 18 Euro
+6. 29,99 Euro pro Monat, was kostet das im Jahr?
+7. Von 80 auf 100, wie viel Prozent mehr?
+8. 36 km/h in m/s
+9. calculation_guard_status
 ```
 
 Expected behavior:
@@ -224,6 +232,7 @@ Expected behavior:
 - cloud models skip automatic injection by default
 - `/calculate ...` forces calculation even when the model gate would skip
 - `/no-calculate ...` skips calculation for the current turn
+- EV prompts do not get a concrete computed stop count unless a charging window is supplied
 
 ## Local Verification
 

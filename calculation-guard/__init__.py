@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 
-__version__ = "0.1.0-beta.2"
+__version__ = "0.1.0-beta.3"
 CONFIG_PATH = Path.home() / ".hermes" / "calculation-guard.json"
 PLUGIN_CONFIG_PATH = Path(__file__).resolve().with_name("config.json")
 MAX_DECISIONS = 30
@@ -60,7 +60,8 @@ CALC_WORD_RE = re.compile(
     r"\b(rechne|berechne|calculate|calculator|wieviel|wie viel|summe|addiere|"
     r"subtract|multipliziere|teile|prozent|percent|mwst|umsatzsteuer|rabatt|"
     r"discount|umrechnen|konvertiere|convert|reichweite|verbrauch|akku|batterie|"
-    r"kwh|l/100\s*km|liter|tank|geschwindigkeit|tempo|durchschnittsgeschwindigkeit)\b",
+    r"kwh|l/100\s*km|liter|tank|geschwindigkeit|tempo|durchschnittsgeschwindigkeit|"
+    r"kosten|monat|jahr|jährlich|jaehrlich|km/h|m/s)\b",
     re.IGNORECASE,
 )
 NUMBER_RE = r"[-+]?\d+(?:[.,]\d+)?"
@@ -96,6 +97,9 @@ UNIT_ALIASES = {
     "w": ("power", 1.0),
     "kwh": ("energy", 1000.0),
     "wh": ("energy", 1.0),
+    "km/h": ("speed", 1000.0 / 3600.0),
+    "kmh": ("speed", 1000.0 / 3600.0),
+    "m/s": ("speed", 1.0),
 }
 
 
@@ -384,6 +388,32 @@ def _calculate_arithmetic(text: str) -> dict[str, Any] | None:
 
 def _calculate_percentages(text: str) -> dict[str, Any] | None:
     lower = text.lower()
+    percentage_difference = re.search(
+        rf"(?:von|from)\s*({NUMBER_RE})\s*(?:auf|to)\s*({NUMBER_RE})[\s\S]{{0,50}}(?:prozent|%|mehr|weniger|change|difference|increase|decrease)"
+        rf"|(?:prozent|%|mehr|weniger|change|difference|increase|decrease)[\s\S]{{0,50}}(?:von|from)\s*({NUMBER_RE})\s*(?:auf|to)\s*({NUMBER_RE})",
+        lower,
+    )
+    if percentage_difference:
+        old_value = _normalize_number(percentage_difference.group(1) or percentage_difference.group(3))
+        new_value = _normalize_number(percentage_difference.group(2) or percentage_difference.group(4))
+        if old_value == 0:
+            return {
+                "domain": "percentages",
+                "confidence": "low",
+                "inputs": {"old_value": old_value, "new_value": new_value},
+                "computed": {},
+                "warnings": ["Percentage change from zero is undefined."],
+            }
+        change = new_value - old_value
+        return {
+            "domain": "percentages",
+            "confidence": "high",
+            "inputs": {"old_value": old_value, "new_value": new_value},
+            "computed": {"absolute_change": _round_value(change), "percentage_change": _round_value(change / old_value * 100)},
+            "formula": "percentage_change = (new_value - old_value) / old_value * 100",
+            "warnings": [],
+        }
+
     percent_of = re.search(rf"({NUMBER_RE})\s*%\s*(?:von|of)\s*({NUMBER_RE})", lower)
     if percent_of:
         percent = _normalize_number(percent_of.group(1))
@@ -479,6 +509,49 @@ def _calculate_percentages(text: str) -> dict[str, Any] | None:
     return None
 
 
+def _calculate_finance_basic(text: str) -> dict[str, Any] | None:
+    lower = text.lower()
+    monthly = re.search(rf"({NUMBER_RE})\s*(?:eur|euro|€)?\s*(?:pro\s+monat|monatlich|per\s+month|monthly)\b", lower)
+    if monthly:
+        monthly_value = _normalize_number(monthly.group(1))
+        return {
+            "domain": "finance_basic",
+            "confidence": "high",
+            "inputs": {"monthly_value": monthly_value},
+            "computed": {"yearly_value": _round_value(monthly_value * 12)},
+            "formula": "yearly_value = monthly_value * 12",
+            "warnings": ["Arithmetic support only; no pricing, contract, tax, or financial advice."],
+        }
+
+    yearly = re.search(rf"({NUMBER_RE})\s*(?:eur|euro|€)?\s*(?:pro\s+jahr|jährlich|jaehrlich|per\s+year|yearly|annually)\b", lower)
+    if yearly:
+        yearly_value = _normalize_number(yearly.group(1))
+        return {
+            "domain": "finance_basic",
+            "confidence": "high",
+            "inputs": {"yearly_value": yearly_value},
+            "computed": {"monthly_value": _round_value(yearly_value / 12)},
+            "formula": "monthly_value = yearly_value / 12",
+            "warnings": ["Arithmetic support only; no pricing, contract, tax, or financial advice."],
+        }
+
+    if not re.search(r"\b(addiere|summe|gesamt|total|zusammen|summiere|add up)\b", lower):
+        return None
+    if not re.search(r"(?:eur|euro|€)", lower):
+        return None
+    amounts = [_normalize_number(item) for item in re.findall(NUMBER_RE, lower)]
+    if len(amounts) < 2:
+        return None
+    return {
+        "domain": "finance_basic",
+        "confidence": "high",
+        "inputs": {"amounts": [_round_value(item) for item in amounts]},
+        "computed": {"total": _round_value(sum(amounts))},
+        "formula": "total = sum(amounts)",
+        "warnings": ["Arithmetic support only; no pricing, contract, tax, or financial advice."],
+    }
+
+
 def _calculate_unit_conversion(text: str) -> dict[str, Any] | None:
     lower = text.lower()
     units = "|".join(sorted(map(re.escape, UNIT_ALIASES), key=len, reverse=True))
@@ -520,7 +593,7 @@ def _find_number_before_unit(text: str, unit_pattern: str, window_pattern: str |
     return None
 
 
-def _find_battery_capacity_kwh(text: str) -> tuple[float | None, bool]:
+def _find_battery_capacity_kwh(text: str) -> tuple[float | None, bool, str]:
     for unit, is_kw_typo in ((r"kwh\b(?!\s*/)", False), (r"kw\b(?!h)", True)):
         pattern = rf"({NUMBER_RE})\s*(?:{unit})"
         for match in re.finditer(pattern, text, re.IGNORECASE):
@@ -528,8 +601,14 @@ def _find_battery_capacity_kwh(text: str) -> tuple[float | None, bool]:
             end = min(len(text), match.end() + 40)
             window = text[start:end]
             if re.search(r"akku|batter|capacity|kapazit|netto|brutto", window, re.IGNORECASE):
-                return _normalize_number(match.group(1)), is_kw_typo
-    return None, False
+                if re.search(r"\b(brutto|gross)\b", window, re.IGNORECASE):
+                    basis = "gross"
+                elif re.search(r"\b(netto|net|usable|nutzbar)\b", window, re.IGNORECASE):
+                    basis = "usable"
+                else:
+                    basis = "unspecified"
+                return _normalize_number(match.group(1)), is_kw_typo, basis
+    return None, False, "unspecified"
 
 
 def _find_range_before_unit(text: str, unit_pattern: str) -> list[float] | None:
@@ -542,13 +621,35 @@ def _find_range_before_unit(text: str, unit_pattern: str) -> list[float] | None:
     return [min(a, b), max(a, b)]
 
 
+def _extract_charge_window_percent(text: str) -> list[float] | None:
+    patterns = (
+        rf"(?:ladefenster|ladehub|ladebereich|charge\s*window|usable\s*window|laden|charge)[\s\S]{{0,40}}?({NUMBER_RE})\s*(?:-|–|—|bis|to)\s*({NUMBER_RE})\s*%",
+        rf"({NUMBER_RE})\s*(?:-|–|—|bis|to)\s*({NUMBER_RE})\s*%[\s\S]{{0,40}}?(?:ladefenster|ladehub|ladebereich|charge\s*window|usable\s*window|laden|charge)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            low = _normalize_number(match.group(1))
+            high = _normalize_number(match.group(2))
+            if 0 <= low < high <= 100:
+                return [low, high]
+    return None
+
+
+def _ceil_positive(value: float) -> int:
+    if value <= 0:
+        return 0
+    return int(math.ceil(value - 1e-9))
+
+
 def _calculate_ev_route(text: str) -> dict[str, Any] | None:
     lower = text.lower()
     has_ev_signal = re.search(r"\b(kwh|kw\s+batter|akku|batterie|e-auto|elektroauto|ev|reichweite|verbrauch)\b", lower)
     consumption_range = _find_range_before_unit(text, r"kwh\s*/\s*100\s*km")
     consumption_single = _find_number_before_unit(text, r"kwh\s*/\s*100\s*km")
-    battery_kwh, kw_battery_typo = _find_battery_capacity_kwh(text)
+    battery_kwh, kw_battery_typo, battery_basis = _find_battery_capacity_kwh(text)
     distance_km = _find_number_before_unit(text, r"km\b", r"route|strecke|fahrt|distanz|entfernung|nach|von|für|fuer|km")
+    charge_window = _extract_charge_window_percent(text)
     if not has_ev_signal or battery_kwh is None or (consumption_range is None and consumption_single is None):
         return None
 
@@ -557,6 +658,7 @@ def _calculate_ev_route(text: str) -> dict[str, Any] | None:
     full_range = [battery_kwh / high_consumption * 100, battery_kwh / low_consumption * 100]
     inputs: dict[str, Any] = {
         "battery_kwh": _round_value(battery_kwh),
+        "battery_capacity_basis": battery_basis,
         "consumption_kwh_per_100km": [_round_value(low_consumption), _round_value(high_consumption)],
     }
     computed: dict[str, Any] = {
@@ -565,24 +667,44 @@ def _calculate_ev_route(text: str) -> dict[str, Any] | None:
     warnings = [
         "Arithmetic support only; no charging curve, weather, speed, elevation, vehicle load, or live charger availability was calculated.",
     ]
-    assumptions = ["Battery capacity was treated as usable kWh unless the prompt said otherwise."]
+    if battery_basis == "gross":
+        assumptions = ["Battery capacity was labeled gross/brutto; usable capacity may be lower than the arithmetic input."]
+        warnings.append("Gross/brutto battery capacity is not the same as usable/net capacity; practical range may be lower.")
+    elif battery_basis == "usable":
+        assumptions = ["Battery capacity was labeled usable/net and treated as usable energy."]
+    else:
+        assumptions = ["Battery capacity was treated as usable kWh because no usable/net/gross basis was supplied."]
     if kw_battery_typo:
         warnings.append("Prompt likely used kW for battery capacity; interpreted it as kWh capacity for arithmetic.")
     if distance_km:
         route_energy = [distance_km * low_consumption / 100, distance_km * high_consumption / 100]
         inputs["distance_km"] = _round_value(distance_km)
         computed["route_energy_need_kwh"] = [_round_value(route_energy[0], 0), _round_value(route_energy[1], 0)]
+        computed["mid_route_charging_required"] = route_energy[1] > battery_kwh
+        warnings.append(
+            "Do not state an exact charge-stop count unless a charging window, start SoC, reserve/target SoC, and usable capacity basis are explicit. "
+            "Without those, say only what follows from energy arithmetic, for example that intermediate charging is required or likely."
+        )
         start_soc = _extract_soc_percent(lower, ("start", "anfang", "abfahrt", "los", "voll", "100%"))
         reserve_soc = _extract_soc_percent(lower, ("reserve", "ziel", "ankunft", "rest", "puffer"))
+        missing_energy = [max(0.0, route_energy[0] - battery_kwh), max(0.0, route_energy[1] - battery_kwh)]
         if start_soc is not None:
             if reserve_soc is None:
                 reserve_soc = 0.0
             usable_start = max(0.0, battery_kwh * (start_soc - reserve_soc) / 100)
-            missing = [max(0.0, route_energy[0] - usable_start), max(0.0, route_energy[1] - usable_start)]
+            missing_energy = [max(0.0, route_energy[0] - usable_start), max(0.0, route_energy[1] - usable_start)]
             inputs["start_soc_percent"] = _round_value(start_soc)
             inputs["reserve_soc_percent"] = _round_value(reserve_soc)
             computed["usable_start_energy_kwh"] = _round_value(usable_start)
-            computed["minimum_mid_route_energy_kwh"] = [_round_value(missing[0], 0), _round_value(missing[1], 0)]
+            computed["minimum_mid_route_energy_kwh"] = [_round_value(missing_energy[0], 0), _round_value(missing_energy[1], 0)]
+        if charge_window:
+            window_energy = battery_kwh * (charge_window[1] - charge_window[0]) / 100
+            inputs["charge_window_percent"] = [_round_value(charge_window[0]), _round_value(charge_window[1])]
+            computed["charge_window_energy_kwh"] = _round_value(window_energy)
+            computed["minimum_mid_route_charges_lower_bound"] = [
+                _ceil_positive(missing_energy[0] / window_energy),
+                _ceil_positive(missing_energy[1] / window_energy),
+            ]
     return {
         "domain": "ev_route",
         "confidence": "high",
@@ -708,6 +830,7 @@ def _calculate_all(text: str, forced: bool = False) -> list[dict[str, Any]]:
         ("ev_route", "ev_route", _calculate_ev_route),
         ("fuel_route", "fuel_route", _calculate_fuel_route),
         ("percentages", "percentages", _calculate_percentages),
+        ("finance_basic", "finance_basic", _calculate_finance_basic),
         ("unit_conversion", "unit_conversion", _calculate_unit_conversion),
         ("time_distance", "time_distance", _calculate_time_distance),
         ("basic_arithmetic", "basic_arithmetic", _calculate_arithmetic),
@@ -719,6 +842,8 @@ def _calculate_all(text: str, forced: bool = False) -> list[dict[str, Any]]:
         result = func(text)
         if result and (result.get("computed") or forced):
             results.append(result)
+    if any(item.get("domain") == "finance_basic" for item in results):
+        results = [item for item in results if item.get("domain") != "basic_arithmetic"]
     return results
 
 
