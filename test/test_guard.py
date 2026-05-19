@@ -197,8 +197,32 @@ class CalculationGuardTests(unittest.TestCase):
         payload = json.loads(guard.calculation_guard_status({"limit": 1}))
         self.assertEqual(payload["plugin"], "calculation-guard")
         self.assertEqual(payload["version"], guard.__version__)
+        self.assertEqual(payload["status_version"], 2)
         self.assertEqual(payload["decisions"][0]["category"], "checked_and_skipped")
+        self.assertEqual(payload["decisions"][0]["reason_summary"], "No supported deterministic calculation pattern was found.")
         self.assertFalse(payload["external_services_used"])
+        self.assertEqual(payload["summary"]["latest_reason"], "no-supported-calculation")
+        self.assertIn("history", payload["summary"])
+
+    def test_status_summary_counts_domains_and_rule_flags(self):
+        guard.DECISIONS.clear()
+        ev_result = guard._calculate_ev_route("588 km Route, 77 kWh Batterie, Verbrauch 16-22 kWh/100 km, Ladefenster 20-80%")
+        guard._record_decision(
+            "injected",
+            "supported-calculation",
+            model="qwen",
+            domains=["ev_route"],
+            results=[ev_result],
+        )
+        guard._record_decision("skipped", "message-forwarding", model="qwen")
+
+        payload = json.loads(guard.calculation_guard_status({"limit": 2}))
+
+        self.assertEqual(payload["summary"]["history"]["by_reason"]["message-forwarding"], 1)
+        self.assertEqual(payload["summary"]["history"]["injected_by_domain"]["ev_route"], 1)
+        self.assertEqual(payload["summary"]["history"]["rule_flags"]["ev_charge_window_lower_bound"], 1)
+        self.assertEqual(payload["summary"]["history"]["rule_flags"]["message_forwarding_skip"], 1)
+        self.assertIn("message_forwarding_skip", payload["decisions"][-1]["rule_flags"])
 
     def test_prompt_redaction_for_diagnostics(self):
         guard.DECISIONS.clear()

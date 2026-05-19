@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.1.0-beta.6
+
+- Expanded `calculation_guard_status` to status version 2 with reason summaries, rule flags, and history counters.
+- Added rule-flag diagnostics for EV stop-count guardrails, charge-window lower bounds, manual controls, model gate skips, and message-forwarding skips.
+- Added `docs/KNOWN_GOOD_CONVERSATIONS.md` with real Hermes verification prompts and expected diagnostics.
+
 ## 0.1.0-beta.5
 
 - Added a message-forwarding guardrail so embedded calculations in Intercom/Jarvis/Sibylle/Ares delivery prompts are not answered by Calculation Guard.

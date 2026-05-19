@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 
-__version__ = "0.1.0-beta.5"
+__version__ = "0.1.0-beta.6"
 CONFIG_PATH = Path.home() / ".hermes" / "calculation-guard.json"
 PLUGIN_CONFIG_PATH = Path(__file__).resolve().with_name("config.json")
 MAX_DECISIONS = 30
@@ -948,8 +948,61 @@ def _diagnose_decision(decision: dict[str, Any]) -> dict[str, Any]:
         "category": category,
         "visible_effect": _visible_effect(decision),
         "searched_external_services": False,
+        "reason_summary": _reason_summary(decision),
+        "rule_flags": _decision_rule_flags(decision),
         "user_explanation": _user_explanation(decision, category),
     }
+
+
+def _reason_summary(decision: dict[str, Any]) -> str:
+    reason = str(decision.get("reason") or "")
+    summaries = {
+        "supported-calculation": "A supported calculation pattern was detected and deterministic context was injected.",
+        "explicit": "The user explicitly forced Calculation Guard with /calculate or #calculate.",
+        "status-request": "The user requested Calculation Guard diagnostics/status.",
+        "message-forwarding": "Calculation content appeared to be payload for another person or agent, so Calculation Guard stayed out of the way.",
+        "model-gate-cloud": "Automatic injection was skipped because this looked like a cloud model and only_local is enabled.",
+        "opt-out": "The user explicitly skipped Calculation Guard with /no-calculate or #no-calculate.",
+        "slash-command": "The prompt looked like another slash command.",
+        "no-supported-calculation": "No supported deterministic calculation pattern was found.",
+        "no-supported-calculation-after-parse": "The trigger matched, but no supported parser produced computed values.",
+        "disabled": "Calculation Guard is disabled by configuration.",
+        "empty": "The prompt was empty.",
+    }
+    return summaries.get(reason, f"Decision reason: {reason}.")
+
+
+def _decision_rule_flags(decision: dict[str, Any]) -> list[str]:
+    flags: list[str] = []
+    reason = str(decision.get("reason") or "")
+    if reason == "message-forwarding":
+        flags.append("message_forwarding_skip")
+    if reason == "model-gate-cloud":
+        flags.append("local_model_gate")
+    if reason == "explicit":
+        flags.append("manual_force")
+    if reason == "opt-out":
+        flags.append("manual_skip")
+    for result in decision.get("results") or []:
+        if not isinstance(result, dict):
+            continue
+        domain = result.get("domain")
+        computed = result.get("computed") if isinstance(result.get("computed"), dict) else {}
+        inputs = result.get("inputs") if isinstance(result.get("inputs"), dict) else {}
+        warnings = " ".join(str(item) for item in result.get("warnings") or [])
+        if domain:
+            flags.append(f"domain:{domain}")
+        if computed.get("mid_route_charging_required"):
+            flags.append("ev_mid_route_charging_required")
+        if "minimum_mid_route_charges_lower_bound" in computed:
+            flags.append("ev_charge_window_lower_bound")
+        if computed.get("exact_stop_count_calculated") is False:
+            flags.append("ev_no_exact_stop_count")
+        if inputs.get("battery_capacity_basis") == "gross":
+            flags.append("ev_gross_battery_warning")
+        if "Gross/brutto battery capacity" in warnings:
+            flags.append("ev_gross_battery_warning")
+    return sorted(dict.fromkeys(flags))
 
 
 def _user_explanation(decision: dict[str, Any], category: str) -> str:
@@ -960,11 +1013,36 @@ def _user_explanation(decision: dict[str, Any], category: str) -> str:
         return "Calculation Guard hat wegen Model-Gate keinen automatischen Kontext fuer dieses Cloud-Modell injiziert."
     if decision.get("reason") == "opt-out":
         return "Calculation Guard wurde fuer diesen Turn manuell uebersprungen."
+    if decision.get("reason") == "message-forwarding":
+        return "Calculation Guard hat nicht gerechnet, weil die Rechnung Teil einer Nachricht an eine andere Person oder einen anderen Agenten war."
     return f"Calculation Guard hat keinen Kontext injiziert: {decision.get('reason')}."
 
 
 def _recent_decisions(limit: int = 5) -> list[dict[str, Any]]:
     return [_diagnose_decision(item) for item in DECISIONS[-limit:]]
+
+
+def _summarize_decision_history(decisions: list[dict[str, Any]]) -> dict[str, Any]:
+    by_reason: dict[str, int] = {}
+    by_category: dict[str, int] = {}
+    injected_by_domain: dict[str, int] = {}
+    rule_flags: dict[str, int] = {}
+    for decision in decisions:
+        diagnosed = _diagnose_decision(decision)
+        reason = str(diagnosed.get("reason") or "unknown")
+        category = str(diagnosed.get("category") or "unknown")
+        by_reason[reason] = by_reason.get(reason, 0) + 1
+        by_category[category] = by_category.get(category, 0) + 1
+        for domain in diagnosed.get("domains") or []:
+            injected_by_domain[str(domain)] = injected_by_domain.get(str(domain), 0) + 1
+        for flag in diagnosed.get("rule_flags") or []:
+            rule_flags[str(flag)] = rule_flags.get(str(flag), 0) + 1
+    return {
+        "by_reason": dict(sorted(by_reason.items())),
+        "by_category": dict(sorted(by_category.items())),
+        "injected_by_domain": dict(sorted(injected_by_domain.items())),
+        "rule_flags": dict(sorted(rule_flags.items())),
+    }
 
 
 def _format_context(results: list[dict[str, Any]], reason: str, model: str | None, current_prompt: str) -> str:
@@ -1028,7 +1106,7 @@ def calculation_guard_status(args: dict, **kwargs) -> str:
     payload = {
         "plugin": "calculation-guard",
         "version": __version__,
-        "status_version": 1,
+        "status_version": 2,
         "enabled": _config_snapshot()["enabled"],
         "config": _config_snapshot(),
         "external_services_used": False,
@@ -1037,6 +1115,9 @@ def calculation_guard_status(args: dict, **kwargs) -> str:
             "decision_count": len(DECISIONS),
             "latest_category": latest.get("category") if latest else None,
             "latest_explanation": latest.get("user_explanation") if latest else None,
+            "latest_reason": latest.get("reason") if latest else None,
+            "latest_rule_flags": latest.get("rule_flags") if latest else [],
+            "history": _summarize_decision_history(DECISIONS),
         },
     }
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)

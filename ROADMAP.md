@@ -113,6 +113,9 @@ Goal: make every calculation decision inspectable.
 - [x] Record detected domain, parsed inputs, computed outputs, warnings, model gate, and visible effect.
 - [x] Add prompt-preview redaction for diagnostics.
 - [x] Add skipped categories and explanations.
+- [x] Add status history counters by reason, category, domain, and rule flag.
+- [x] Add human-readable reason summaries to decisions.
+- [x] Add rule flags for EV guardrails, model gate, manual controls, and message-forwarding skip.
 
 ## v0.9 - Message Forwarding Safety
 
@@ -122,7 +125,15 @@ Goal: avoid intercepting calculations that are merely payload for another person
 - [x] Record `message-forwarding` as the skip reason.
 - [x] Keep `/calculate` as an explicit override.
 
-## v0.10 - Beta 3 Practical Coverage
+## v0.10 - Known Good Hermes Conversations
+
+Goal: make real Hermes verification reproducible.
+
+- [x] Document known-good test prompts for arithmetic, EV, finance, units, and Intercom forwarding.
+- [x] Document expected answer shapes and status diagnostics.
+- [x] Link the verification document from the README.
+
+## v0.11 - Beta 3 Practical Coverage
 
 Goal: make the first beta materially more useful outside EV prompts.
 
@@ -134,7 +145,7 @@ Goal: make the first beta materially more useful outside EV prompts.
 - [x] Add `m/s` to `km/h` conversion.
 - [x] Add tests for each new practical calculation class.
 
-## v0.11 - Research Guard Cooperation
+## v0.12 - Research Guard Cooperation
 
 Goal: allow both plugins to complement each other without tight coupling.
 
@@ -144,7 +155,7 @@ Goal: allow both plugins to complement each other without tight coupling.
 - [ ] ADAPT Define ordering expectations when both plugins are installed.
 - [ ] Document recommended plugin order.
 
-## v0.12 - Answer Consistency Linting
+## v0.13 - Answer Consistency Linting
 
 Goal: optionally catch contradictions after deterministic values are available.
 

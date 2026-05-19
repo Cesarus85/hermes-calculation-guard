@@ -154,7 +154,7 @@ All supported calculations should run locally inside the Hermes plugin process.
 
 ## Current Beta Features
 
-Version `0.1.0-beta.5` includes:
+Version `0.1.0-beta.6` includes:
 
 - `pre_llm_call` context injection for supported local/small-model prompts
 - default cloud-model auto-skip with manual `/calculate` and `#calculate` override
@@ -169,7 +169,7 @@ Version `0.1.0-beta.5` includes:
 - fuel range and route fuel plausibility math
 - time/distance/speed calculations, including distance from speed and duration plus `km/h` to `m/s`
 - `calculation_guard_status`, `calculation_guard_diagnostics`, and `calculation_guard_config`
-- in-memory decision diagnostics with prompt-preview redaction
+- in-memory decision diagnostics with prompt-preview redaction, reason summaries, history counters, and rule flags
 
 ## Installation
 
@@ -248,6 +248,8 @@ Run the smoke test to exercise the hook directly without a full Hermes runtime:
 ```bash
 python3 scripts/smoke_test.py
 ```
+
+For real Hermes verification, see [Known Good Hermes Conversations](docs/KNOWN_GOOD_CONVERSATIONS.md).
 
 ## Development Status
 
